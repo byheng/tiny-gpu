@@ -2,19 +2,19 @@
 `timescale 1ns/1ns
 
 // BLOCK DISPATCH
-// > The GPU has one dispatch unit at the top level
+// > The GPU has one dispatch unit at the top level，
 // > Manages processing of threads and marks kernel execution as done
 // > Sends off batches of threads in blocks to be executed by available compute cores
 module dispatch #(
-    parameter NUM_CORES = 2,
-    parameter THREADS_PER_BLOCK = 4
+    parameter NUM_CORES = 2, // Number of cores in the GPU
+    parameter THREADS_PER_BLOCK = 4 // Number of threads per block
 ) (
     input wire clk,
     input wire reset,
     input wire start,
 
     // Kernel Metadata
-    input wire [7:0] thread_count,
+    input wire [7:0] thread_count, // Total number of threads to be executed
 
     // Core States
     input reg [NUM_CORES-1:0] core_done,

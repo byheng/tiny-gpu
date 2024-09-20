@@ -1,7 +1,7 @@
 `default_nettype none
 `timescale 1ns/1ns
 
-// LOAD-STORE UNIT
+// LOAD-STORE UNIT, LSU,加载存储单元,负责处理异步的内存加载和存储操作，并等待响应。每个核中的每个线程都有自己的LSU。LDR, STR指令在这里执行
 // > Handles asynchronous memory load and store operations and waits for response
 // > Each thread in each core has it's own LSU
 // > LDR, STR instructions are executed here
@@ -11,7 +11,7 @@ module lsu (
     input wire enable, // If current block has less threads then block size, some LSUs will be inactive
 
     // State
-    input reg [2:0] core_state,
+    input reg [2:0] core_state, // Current state, 3'b011: REQUEST, 3'b110: UPDATE
 
     // Memory Control Sgiansl
     input reg decoded_mem_read_enable,
@@ -26,13 +26,15 @@ module lsu (
     output reg [7:0] mem_read_address,
     input reg mem_read_ready,
     input reg [7:0] mem_read_data,
+
     output reg mem_write_valid,
     output reg [7:0] mem_write_address,
-    output reg [7:0] mem_write_data,
     input reg mem_write_ready,
+    output reg [7:0] mem_write_data,
+
 
     // LSU Outputs
-    output reg [1:0] lsu_state,
+    output reg [1:0] lsu_state, // 2-bit state machine, 2位状态机, 00: IDLE, 01: REQUESTING, 10: WAITING, 11: DONE
     output reg [7:0] lsu_out
 );
     localparam IDLE = 2'b00, REQUESTING = 2'b01, WAITING = 2'b10, DONE = 2'b11;
@@ -47,13 +49,13 @@ module lsu (
             mem_write_address <= 0;
             mem_write_data <= 0;
         end else if (enable) begin
-            // If memory read enable is triggered (LDR instruction)
+            // If memory read enable is triggered (LDR instruction), 读取内存
             if (decoded_mem_read_enable) begin 
                 case (lsu_state)
                     IDLE: begin
                         // Only read when core_state = REQUEST
                         if (core_state == 3'b011) begin 
-                            lsu_state <= REQUESTING;
+                            lsu_state <= REQUESTING; // 空闲状态下，只有在core_state = REQUEST（3'b011）时才读取
                         end
                     end
                     REQUESTING: begin 
@@ -62,14 +64,14 @@ module lsu (
                         lsu_state <= WAITING;
                     end
                     WAITING: begin
-                        if (mem_read_ready == 1) begin
+                        if (mem_read_ready == 1) begin // 单次读取
                             mem_read_valid <= 0;
                             lsu_out <= mem_read_data;
                             lsu_state <= DONE;
                         end
                     end
                     DONE: begin 
-                        // Reset when core_state = UPDATE
+                        // Reset when core_state = UPDATE，更新状态，需要等待core_state信息
                         if (core_state == 3'b110) begin 
                             lsu_state <= IDLE;
                         end
@@ -77,7 +79,7 @@ module lsu (
                 endcase
             end
 
-            // If memory write enable is triggered (STR instruction)
+            // If memory write enable is triggered (STR instruction), 写入内存
             if (decoded_mem_write_enable) begin 
                 case (lsu_state)
                     IDLE: begin

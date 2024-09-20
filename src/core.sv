@@ -2,15 +2,15 @@
 `timescale 1ns/1ns
 
 // COMPUTE CORE
-// > Handles processing 1 block at a time
+// > Handles processing 1 block at a time,
 // > The core also has it's own scheduler to manage control flow
 // > Each core contains 1 fetcher & decoder, and register files, ALUs, LSUs, PC for each thread
 module core #(
-    parameter DATA_MEM_ADDR_BITS = 8,
-    parameter DATA_MEM_DATA_BITS = 8,
-    parameter PROGRAM_MEM_ADDR_BITS = 8,
-    parameter PROGRAM_MEM_DATA_BITS = 16,
-    parameter THREADS_PER_BLOCK = 4
+    parameter DATA_MEM_ADDR_BITS = 8, // 数据存储器地址位宽
+    parameter DATA_MEM_DATA_BITS = 8, // 数据存储器数据位宽
+    parameter PROGRAM_MEM_ADDR_BITS = 8, // 程序存储器地址位宽
+    parameter PROGRAM_MEM_DATA_BITS = 16,  // 程序存储器数据位宽
+    parameter THREADS_PER_BLOCK = 4 // 每个块中的线程数，默认为 4
 ) (
     input wire clk,
     input wire reset,
@@ -21,28 +21,28 @@ module core #(
 
     // Block Metadata
     input wire [7:0] block_id,
-    input wire [$clog2(THREADS_PER_BLOCK):0] thread_count,
+    input wire [$clog2(THREADS_PER_BLOCK):0] thread_count, // $clog2(THREADS_PER_BLOCK) 是一个系统函数，用于计算 THREADS_PER_BLOCK 的对数值（以2为底），并向上取整。
 
     // Program Memory
-    output reg program_mem_read_valid,
-    output reg [PROGRAM_MEM_ADDR_BITS-1:0] program_mem_read_address,
-    input reg program_mem_read_ready,
-    input reg [PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data,
+    output reg program_mem_read_valid, // 程序存储器读取有效
+    output reg [PROGRAM_MEM_ADDR_BITS-1:0] program_mem_read_address, // 程序存储器读取地址
+    input reg program_mem_read_ready, // 程序存储器读取准备
+    input reg [PROGRAM_MEM_DATA_BITS-1:0] program_mem_read_data, // 程序存储器读取数据
 
     // Data Memory
-    output reg [THREADS_PER_BLOCK-1:0] data_mem_read_valid,
-    output reg [DATA_MEM_ADDR_BITS-1:0] data_mem_read_address [THREADS_PER_BLOCK-1:0],
-    input reg [THREADS_PER_BLOCK-1:0] data_mem_read_ready,
-    input reg [DATA_MEM_DATA_BITS-1:0] data_mem_read_data [THREADS_PER_BLOCK-1:0],
-    output reg [THREADS_PER_BLOCK-1:0] data_mem_write_valid,
-    output reg [DATA_MEM_ADDR_BITS-1:0] data_mem_write_address [THREADS_PER_BLOCK-1:0],
-    output reg [DATA_MEM_DATA_BITS-1:0] data_mem_write_data [THREADS_PER_BLOCK-1:0],
-    input reg [THREADS_PER_BLOCK-1:0] data_mem_write_ready
+    output reg [THREADS_PER_BLOCK-1:0] data_mem_read_valid, // 数据存储器读取有效
+    output reg [DATA_MEM_ADDR_BITS-1:0] data_mem_read_address [THREADS_PER_BLOCK-1:0], // 数据存储器读取地址
+    input reg [THREADS_PER_BLOCK-1:0] data_mem_read_ready, // 数据存储器读取准备
+    input reg [DATA_MEM_DATA_BITS-1:0] data_mem_read_data [THREADS_PER_BLOCK-1:0], // 数据存储器读取数据
+    output reg [THREADS_PER_BLOCK-1:0] data_mem_write_valid, // 数据存储器写入有效
+    output reg [DATA_MEM_ADDR_BITS-1:0] data_mem_write_address [THREADS_PER_BLOCK-1:0], // 数据存储器写入地址
+    output reg [DATA_MEM_DATA_BITS-1:0] data_mem_write_data [THREADS_PER_BLOCK-1:0], // 数据存储器写入数据
+    input reg [THREADS_PER_BLOCK-1:0] data_mem_write_ready // 数据存储器写入准备
 );
     // State
-    reg [2:0] core_state;
-    reg [2:0] fetcher_state;
-    reg [15:0] instruction;
+    reg [2:0] core_state; // Current state, 3'b001: FETCH, 3'b010: DECODE
+    reg [2:0] fetcher_state; // 3位状态机, 000: IDLE, 001: FETCHING, 010: FETCHED
+    reg [15:0] instruction; // 16位指令
 
     // Intermediate Signals
     reg [7:0] current_pc;
@@ -61,7 +61,7 @@ module core #(
     reg [7:0] decoded_immediate;
 
     // Decoded Control Signals
-    reg decoded_reg_write_enable;           // Enable writing to a register
+    reg decoded_reg_write_enable;           // Enable writing to a register 
     reg decoded_mem_read_enable;            // Enable reading from memory
     reg decoded_mem_write_enable;           // Enable writing to memory
     reg decoded_nzp_write_enable;           // Enable writing to NZP register
@@ -71,9 +71,9 @@ module core #(
     reg decoded_pc_mux;                     // Select source of next PC
     reg decoded_ret;
 
-    // Fetcher
+    // Fetcher, 取指器
     fetcher #(
-        .PROGRAM_MEM_ADDR_BITS(PROGRAM_MEM_ADDR_BITS),
+        .PROGRAM_MEM_ADDR_BITS(PROGRAM_MEM_ADDR_BITS), 
         .PROGRAM_MEM_DATA_BITS(PROGRAM_MEM_DATA_BITS)
     ) fetcher_instance (
         .clk(clk),
@@ -88,7 +88,7 @@ module core #(
         .instruction(instruction) 
     );
 
-    // Decoder
+    // Decoder, 解码器
     decoder decoder_instance (
         .clk(clk),
         .reset(reset),
@@ -110,7 +110,7 @@ module core #(
         .decoded_ret(decoded_ret)
     );
 
-    // Scheduler
+    // Scheduler, 控制流管理
     scheduler #(
         .THREADS_PER_BLOCK(THREADS_PER_BLOCK),
     ) scheduler_instance (
@@ -128,7 +128,7 @@ module core #(
         .done(done)
     );
 
-    // Dedicated ALU, LSU, registers, & PC unit for each thread this core has capacity for
+    // Dedicated ALU, LSU, registers, & PC unit for each thread this core has capacity for, 每个线程都有专用的ALU、LSU、寄存器和PC单元
     genvar i;
     generate
         for (i = 0; i < THREADS_PER_BLOCK; i = i + 1) begin : threads
@@ -145,7 +145,7 @@ module core #(
                 .alu_out(alu_out[i])
             );
 
-            // LSU
+            // LSU, Load-Store Unit, 加载存储单元
             lsu lsu_instance (
                 .clk(clk),
                 .reset(reset),
@@ -167,7 +167,7 @@ module core #(
                 .lsu_out(lsu_out[i])
             );
 
-            // Register File
+            // Register File, 寄存器文件
             registers #(
                 .THREADS_PER_BLOCK(THREADS_PER_BLOCK),
                 .THREAD_ID(i),
@@ -190,7 +190,7 @@ module core #(
                 .rt(rt[i])
             );
 
-            // Program Counter
+            // Program Counter, 程序计数器
             pc #(
                 .DATA_MEM_DATA_BITS(DATA_MEM_DATA_BITS),
                 .PROGRAM_MEM_ADDR_BITS(PROGRAM_MEM_ADDR_BITS)

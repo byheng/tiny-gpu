@@ -2,20 +2,20 @@
 `timescale 1ns/1ns
 
 // GPU
-// > Built to use an external async memory with multi-channel read/write
-// > Assumes that the program is loaded into program memory, data into data memory, and threads into
-//   the device control register before the start signal is triggered
-// > Has memory controllers to interface between external memory and its multiple cores
-// > Configurable number of cores and thread capacity per core
+// > Built to use an external async memory with multi-channel read/write，使用具有多通道读/写的外部异步存储器构建
+// > Assumes that the program is loaded into program memory, data into data memory, and threads into，假设程序加载到程序存储器中，数据加载到数据存储器中，线程加载到
+//   the device control register before the start signal is triggered，设备控制寄存器中的线程在触发启动信号之前加载
+// > Has memory controllers to interface between external memory and its multiple cores，具有内存控制器，用于在外部存储器和其多个核心之间进行接口
+// > Configurable number of cores and thread capacity per core，可配置的核心数量和每个核心的线程容量
 module gpu #(
-    parameter DATA_MEM_ADDR_BITS = 8,        // Number of bits in data memory address (256 rows)
-    parameter DATA_MEM_DATA_BITS = 8,        // Number of bits in data memory value (8 bit data)
-    parameter DATA_MEM_NUM_CHANNELS = 4,     // Number of concurrent channels for sending requests to data memory
-    parameter PROGRAM_MEM_ADDR_BITS = 8,     // Number of bits in program memory address (256 rows)
-    parameter PROGRAM_MEM_DATA_BITS = 16,    // Number of bits in program memory value (16 bit instruction)
-    parameter PROGRAM_MEM_NUM_CHANNELS = 1,  // Number of concurrent channels for sending requests to program memory
-    parameter NUM_CORES = 2,                 // Number of cores to include in this GPU
-    parameter THREADS_PER_BLOCK = 4          // Number of threads to handle per block (determines the compute resources of each core)
+    parameter DATA_MEM_ADDR_BITS = 8,        // Number of bits in data memory address (256 rows)，数据存储器地址位宽
+    parameter DATA_MEM_DATA_BITS = 8,        // Number of bits in data memory value (8 bit data)，数据存储器值位宽
+    parameter DATA_MEM_NUM_CHANNELS = 4,     // Number of concurrent channels for sending requests to data memory，发送请求到数据存储器的并发通道数
+    parameter PROGRAM_MEM_ADDR_BITS = 8,     // Number of bits in program memory address (256 rows)，程序存储器地址位宽
+    parameter PROGRAM_MEM_DATA_BITS = 16,    // Number of bits in program memory value (16 bit instruction)，程序存储器值位宽
+    parameter PROGRAM_MEM_NUM_CHANNELS = 1,  // Number of concurrent channels for sending requests to program memory，发送请求到程序存储器的并发通道数
+    parameter NUM_CORES = 2,                 // Number of cores to include in this GPU，包含的核心数量
+    parameter THREADS_PER_BLOCK = 4          // Number of threads to handle per block (determines the compute resources of each core)，每个块处理的线程数（确定每个核心的计算资源）
 ) (
     input wire clk,
     input wire reset,
@@ -154,8 +154,8 @@ module gpu #(
     genvar i;
     generate
         for (i = 0; i < NUM_CORES; i = i + 1) begin : cores
-            // EDA: We create separate signals here to pass to cores because of a requirement
-            // by the OpenLane EDA flow (uses Verilog 2005) that prevents slicing the top-level signals
+            // EDA: We create separate signals here to pass to cores because of a requirement，我们在这里创建单独的信号以传递给核心，因为有一个要求
+            // by the OpenLane EDA flow (uses Verilog 2005) that prevents slicing the top-level signals，通过OpenLane EDA流程（使用Verilog 2005）阻止切片顶层信号
             reg [THREADS_PER_BLOCK-1:0] core_lsu_read_valid;
             reg [DATA_MEM_ADDR_BITS-1:0] core_lsu_read_address [THREADS_PER_BLOCK-1:0];
             reg [THREADS_PER_BLOCK-1:0] core_lsu_read_ready;
@@ -165,7 +165,7 @@ module gpu #(
             reg [DATA_MEM_DATA_BITS-1:0] core_lsu_write_data [THREADS_PER_BLOCK-1:0];
             reg [THREADS_PER_BLOCK-1:0] core_lsu_write_ready;
 
-            // Pass through signals between LSUs and data memory controller
+            // Pass through signals between LSUs and data memory controller，LSU和数据存储器控制器之间的信号传递
             genvar j;
             for (j = 0; j < THREADS_PER_BLOCK; j = j + 1) begin
                 localparam lsu_index = i * THREADS_PER_BLOCK + j;

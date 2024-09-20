@@ -2,12 +2,12 @@
 `timescale 1ns/1ns
 
 // REGISTER FILE
-// > Each thread within each core has it's own register file with 13 free registers and 3 read-only registers
-// > Read-only registers hold the familiar %blockIdx, %blockDim, and %threadIdx values critical to SIMD
+// > Each thread within each core has it's own register file with 13 free registers and 3 read-only registers，包含13个可自由使用的寄存器和3个只读寄存器
+// > Read-only registers hold the familiar %blockIdx, %blockDim, and %threadIdx values critical to SIMD，
 module registers #(
-    parameter THREADS_PER_BLOCK = 4,
-    parameter THREAD_ID = 0,
-    parameter DATA_BITS = 8
+    parameter THREADS_PER_BLOCK = 4, // Default to 4 threads per block，默认为 4 个线程
+    parameter THREAD_ID = 0, // Default to 0 thread id，默认为 0 线程
+    parameter DATA_BITS = 8 // Default to 8-bit data width，默认为 8 位数据宽度
 ) (
     input wire clk,
     input wire reset,
@@ -17,7 +17,7 @@ module registers #(
     input reg [7:0] block_id,
 
     // State
-    input reg [2:0] core_state,
+    input reg [2:0] core_state, // Current state, 3'b011: REQUEST, 3'b110: UPDATE
 
     // Instruction Signals
     input reg [3:0] decoded_rd_address,
@@ -69,15 +69,15 @@ module registers #(
             registers[15] <= THREAD_ID;         // %threadIdx
         end else if (enable) begin 
             // [Bad Solution] Shouldn't need to set this every cycle
-            registers[13] <= block_id; // Update the block_id when a new block is issued from dispatcher
+            registers[13] <= block_id; // Update the block_id when a new block is issued from dispatcher, 从调度器发出新块时更新 block_id
             
-            // Fill rs/rt when core_state = REQUEST
+            // Fill rs/rt when core_state = REQUEST, 当 core_state = REQUEST 时填充 rs/rt
             if (core_state == 3'b011) begin 
                 rs <= registers[decoded_rs_address];
                 rt <= registers[decoded_rt_address];
             end
 
-            // Store rd when core_state = UPDATE
+            // Store rd when core_state = UPDATE, 当 core_state = UPDATE 时存储 rd
             if (core_state == 3'b110) begin 
                 // Only allow writing to R0 - R12
                 if (decoded_reg_write_enable && decoded_rd_address < 13) begin
